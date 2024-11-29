@@ -1,217 +1,231 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
-import { getOdds, placeBet } from '../services/api';
-import { Coin, BetData } from '../types';
-import { LoadingSpinner } from '../components/TrendingMemes/LoadingSpinner';
-import { NotificationToast } from '../components/NotificationToast';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  ArrowLeft, 
+  Clock,
+  DollarSign
+} from 'lucide-react';
+import { giphyService } from '../services/giphyService';
+import { LoadingCard } from '../components/Trends/LoadingCard';
 import { BetModal } from '../components/Trends/BetModal';
+import { TrendChart } from '../components/Charts/TrendChart';
 import { buttonStyles } from '../styles/buttons';
-import { spacing } from '../styles/spacing';
-import confetti from 'canvas-confetti';
+import { Coin } from '../types';
+import { GiphyError } from '../utils/errorHandling';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
-// MemeCard Component
-const MemeCard: React.FC<{
-  meme: Coin;
-  onBetClick: (meme: Coin) => void;
-  index: number;
-}> = ({ meme, onBetClick, index }) => {
-  return (
-    <div 
-      className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg 
-        hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]
-        border border-gray-100 hover:border-purple-200 group animate-fadeIn"
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <div className="p-6 space-y-4">
-        {/* Meme Header */}
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <img
-              src={meme.thumbnail}
-              alt={meme.name}
-              className="w-16 h-16 rounded-full object-cover shadow-sm 
-                group-hover:scale-110 transition-transform duration-300"
-            />
-            <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-white shadow-sm">
-              <div className="p-1 rounded-full bg-purple-100">
-                <Sparkles className="h-3 w-3 text-purple-600" />
-              </div>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">{meme.name}</h3>
-            <p className="text-sm text-gray-500">{meme.symbol}</p>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center p-2 rounded-lg 
-            bg-gray-50 group-hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-gray-600">Current Mentions</span>
-            <span className="font-medium">{meme.mentions.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-center p-2 rounded-lg 
-            bg-purple-50 group-hover:bg-purple-100 transition-colors"
-          >
-            <span className="text-purple-600">Odds</span>
-            <span className="font-medium text-purple-700">{meme.odds.toFixed(2)}x</span>
-          </div>
-          <div className="flex justify-between items-center p-2 rounded-lg 
-            bg-green-50 group-hover:bg-green-100 transition-colors"
-          >
-            <span className="text-green-600">Potential Return</span>
-            <span className="font-medium text-green-700">
-              {meme.potentialMultiplier.toFixed(2)}x
-            </span>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <button
-          onClick={() => onBetClick(meme)}
-          className={`
-            ${buttonStyles.primary}
-            w-full group relative overflow-hidden
-            flex items-center justify-center space-x-2
-          `}
-        >
-          <span className="relative z-10 flex items-center">
-            <Sparkles className="h-5 w-5 mr-2 group-hover:animate-spin" />
-            Place Bet
-          </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-700 to-blue-700 
-            opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Main BetPage Component
 export const BetPage: React.FC = () => {
-  const [memes, setMemes] = useState<Coin[]>([]);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [meme, setMeme] = useState<Coin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMeme, setSelectedMeme] = useState<Coin | null>(null);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const fetchMemes = async () => {
-    try {
-      setIsRefreshing(true);
-      const data = await getOdds();
-      setMemes(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load trending memes');
-      console.error('Error fetching memes:', err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  const [showBetModal, setShowBetModal] = useState(false);
+  const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
 
   useEffect(() => {
-    fetchMemes();
-    const interval = setInterval(fetchMemes, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    const fetchMemeDetails = async () => {
+      if (!id) return;
 
-  const handleBetSuccess = () => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  };
+      try {
+        setLoading(true);
+        const data = await giphyService.getTrendingMemes();
+        const foundMeme = data.find(m => m.id === id);
 
-  const handleBetSubmit = async (betData: BetData) => {
-    try {
-      await placeBet(betData);
-      setNotification({
-        type: 'success',
-        message: `Successfully placed bet of ${betData.amount} points!`
-      });
-      await fetchMemes();
-      setSelectedMeme(null);
-      handleBetSuccess();
-    } catch (err) {
-      setNotification({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to place bet'
-      });
-      throw err;
-    }
-  };
+        if (!foundMeme) {
+          setError('Meme not found');
+          return;
+        }
+
+        // Convert to Coin format
+        const coinMeme: Coin = {
+          id: foundMeme.id,
+          name: foundMeme.title,
+          symbol: foundMeme.title.slice(0, 4).toUpperCase(),
+          thumbnail: foundMeme.images.fixed_height.url,
+          price: Math.random() * 100,
+          mentions: Math.floor(Math.random() * 1000),
+          odds: 1 + Math.random(),
+          potentialMultiplier: 1 + Math.random() * 2,
+          trend: Math.random() > 0.5 ? 'up' : 'down',
+          volume24h: Math.floor(Math.random() * 1000000),
+          marketCap: Math.floor(Math.random() * 10000000),
+          lastUpdated: new Date()
+        };
+
+        setMeme(coinMeme);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof GiphyError ? err.message : 'Failed to load meme details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMemeDetails();
+  }, [id]);
 
   if (loading) {
     return (
-      <div className={spacing.section}>
-        <div className="bg-white rounded-xl shadow-lg p-8 flex items-center justify-center">
-          <LoadingSpinner />
+      <div className="container mx-auto px-4 py-8">
+        <LoadingCard />
+      </div>
+    );
+  }
+
+  if (error || !meme) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+          <p>{error || 'Meme not found'}</p>
+          <button
+            onClick={() => navigate('/trending')}
+            className={`${buttonStyles.secondary} mt-4`}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Trending
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`${spacing.section} space-y-8`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-transparent bg-clip-text 
-          bg-gradient-to-r from-purple-600 to-blue-600"
-        >
-          Place Your Bets
-        </h1>
+    <ErrorBoundary>
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* Back Button */}
         <button
-          onClick={fetchMemes}
-          disabled={isRefreshing}
-          className={`
-            ${buttonStyles.secondary}
-            inline-flex items-center space-x-2
-          `}
+          onClick={() => navigate('/trending')}
+          className={`${buttonStyles.secondary} mb-6`}
         >
-          <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh Odds</span>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Trending
         </button>
+
+        {/* Meme Details */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Left Column - Image and Basic Info */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <img
+                src={meme.thumbnail}
+                alt={meme.name}
+                className="w-full aspect-video object-cover"
+              />
+              <div className="p-4">
+                <h1 className="text-2xl font-bold">{meme.name}</h1>
+                <p className="text-gray-500">${meme.symbol}</p>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-xl shadow-lg">
+                <p className="text-gray-500 text-sm">Current Price</p>
+                <p className="text-xl font-bold">${meme.price.toFixed(2)}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-lg">
+                <p className="text-gray-500 text-sm">24h Volume</p>
+                <p className="text-xl font-bold">
+                  {meme.volume24h.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Trading Info */}
+          <div className="space-y-4">
+            {/* Trend Info */}
+            <div className="bg-white p-6 rounded-xl shadow-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Trend Analysis</h2>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium
+                  ${meme.trend === 'up' 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-red-100 text-red-700'}`}
+                >
+                  {meme.trend === 'up' ? (
+                    <div className="flex items-center">
+                      <TrendingUp className="w-4 h-4 mr-1" />
+                      Bullish
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <TrendingDown className="w-4 h-4 mr-1" />
+                      Bearish
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-gray-500 text-sm">Potential Return</p>
+                  <p className="text-xl font-bold">
+                    {meme.potentialMultiplier.toFixed(2)}x
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Mentions</p>
+                  <p className="text-xl font-bold">
+                    {meme.mentions.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowBetModal(true)}
+                className={`${buttonStyles.primary} w-full`}
+              >
+                <DollarSign className="w-5 h-5 mr-2" />
+                Place Bet
+              </button>
+            </div>
+
+            {/* Time Range Selector */}
+            <div className="bg-white p-4 rounded-xl shadow-lg">
+              <div className="flex gap-2">
+                {(['1h', '24h', '7d', '30d'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium
+                      ${timeRange === range 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    <Clock className="w-4 h-4 mb-1 mx-auto" />
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="bg-white p-4 rounded-xl shadow-lg">
+              <TrendChart
+                data={[]} // Add mock data or integrate with real data
+                timeRange={timeRange}
+                metrics={['price', 'mentions']}
+                height={300}
+                coin={meme}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bet Modal */}
+        {showBetModal && (
+          <BetModal
+            isOpen={true}
+            onClose={() => setShowBetModal(false)}
+            coin={meme}
+            userBalance={10000}
+          />
+        )}
       </div>
-
-      {error ? (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg flex items-center space-x-2">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {memes.map((meme, index) => (
-            <MemeCard
-              key={meme.id}
-              meme={meme}
-              onBetClick={() => setSelectedMeme(meme)}
-              index={index}
-            />
-          ))}
-        </div>
-      )}
-
-      {selectedMeme && (
-        <BetModal
-          isOpen={true}
-          onClose={() => setSelectedMeme(null)}
-          coin={selectedMeme}
-          onPlaceBet={handleBetSubmit}
-        />
-      )}
-
-      {notification && (
-        <NotificationToast
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification(null)}
-        />
-      )}
-    </div>
+    </ErrorBoundary>
   );
 };

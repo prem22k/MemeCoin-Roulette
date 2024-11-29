@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Layout } from './components/Layout';
 import { LoadingSpinner } from './components/TrendingMemes/LoadingSpinner';
 import { QueryProvider } from './providers/QueryProvider';
+import { BetPage } from './pages/BetPage';
 
 // Lazy load pages for better performance
 const Home = React.lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));
 const TrendingMemes = React.lazy(() => import('./pages/TrendingMemes').then(module => ({ default: module.TrendingMemes })));
-const BetPage = React.lazy(() => import('./pages/BetPage').then(module => ({ default: module.BetPage })));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard').then(module => ({ default: module.Leaderboard })));
 const About = React.lazy(() => import('./pages/About').then(module => ({ default: module.About })));
 
@@ -95,7 +95,7 @@ const App: React.FC = () => {
               <Route element={<Layout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/trending" element={<TrendingMemes />} />
-                <Route path="/bet" element={<BetPage />} />
+                <Route path="/bet/:id" element={<BetPage />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/about" element={<About />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
