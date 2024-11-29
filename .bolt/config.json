@@ -1,0 +1,7 @@
+{
+  "template": "bolt-vite-react-ts",
+  "features": {
+    "audio": true,
+    "websockets": true
+  }
+}
