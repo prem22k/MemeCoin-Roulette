@@ -103,31 +103,3 @@ This project is licensed under the [MIT License](LICENSE).
 For any inquiries or feedback, please contact the project maintainer at [premsai224k@gmail.com](mailto:premsai224k@gmail.com).
 
 Enjoy the MemeCoin Roulette experience!
-```
-
-### Key Changes and Additions:
-1. **Professional Tone**: The wording is more formal to suit a hackathon environment.
-2. **Deployment and Vercel Instructions**: Clear steps are provided for setting up on Vercel.
-3. **Video Demo Placeholder**: I've added a placeholder for your video demo link, which you can update later.
-4. **Screenshots Section**: Added more specific instructions on how to organize and reference screenshots.
-5. **Contributing Section**: Included a more explicit call for contributions.
-
-### Folder Structure for Screenshots:
-Create a `screenshots` folder in your repository and place your images there. The directory structure should look like this:
-
-```
-/MemeCoin-Roulette
-  ├── /screenshots
-  │     ├── screenshot1.png
-  │     ├── screenshot2.png
-  │     └── ...
-  ├── README.md
-  └── (other files)
-```
-
-Once you've placed your screenshots in the folder, reference them like this in the README:
-```markdown
-![MemeCoin Roulette Screenshot](screenshots/screenshot1.png)
-```
-
-This structure will make it easy to update your README when you have the screenshots ready. Let me know if you'd like help with any specific sections of your hackathon submission!
