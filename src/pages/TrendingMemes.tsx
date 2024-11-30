@@ -29,6 +29,15 @@ export const TrendingMemes: React.FC = () => {
             onBetClick={handleBetClick}
             className="animate-fadeIn"
           />
+          
+          {/* GIPHY Attribution - positioned on the right */}
+          <div className="absolute right-0 bottom-0 -mb-6">
+            <img 
+              src="/dist/giphy/PoweredBy_200px-White_HorizText.png"
+              alt="Powered by GIPHY"
+              className="h-5 object-contain"
+            />
+          </div>
         </div>
 
         {/* Bet Modal */}
