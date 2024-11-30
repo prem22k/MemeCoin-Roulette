@@ -77,7 +77,14 @@ A video demonstration of the MemeCoin Roulette app will be available shortly.
 
 ## Screenshots
 
-![Screenshot of MemeCoin Roulette](screenshots/screenshot1.png)
+Here are some screenshots showcasing the features and user interface of MemeCoin Roulette:
+
+1. ![Welcome Popup](./screenshots/Screenshot1.png)
+2. ![Home Page](./screenshots/Screenshot2.png)
+3. ![Trending Memes Section](./screenshots/Screenshot3.png)
+4. ![Leaderboard](./screenshots/Screenshot4.png)
+5. ![About Section](./screenshots/Screenshot5.png)
+
 
 ## Contributing
 
