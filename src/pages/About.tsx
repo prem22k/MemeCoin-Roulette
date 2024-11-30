@@ -139,7 +139,7 @@ const CreatorSection = () => {
             whileTap={{ scale: 0.95 }}
           >
             <a
-              href="mailto:your.email@example.com"
+              href="mailto:premsai224k@gmail.com"
               className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 
                 text-white rounded-full font-medium hover:bg-purple-700 
                 transition-colors duration-300"
