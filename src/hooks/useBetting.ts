@@ -1,91 +1,60 @@
-import { useState, useCallback } from 'react';
-import { Coin, BetData, BetDirection } from '../types';
-import { placeBet } from '../services/api';
-import { useBetHistory } from './useBetHistory';
+import { useState } from 'react';
+import { betService, BetData, PlacedBet } from '../services/betService';
+import { Coin } from '../types';
+import { GiphyError } from '../utils/errorHandling';
 
-interface BetResult {
-  success: boolean;
-  message: string;
-  betId?: string;
+interface UseBettingProps {
+  userId: string;
+  userBalance: number;
 }
 
-export const useBetting = () => {
-  const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [lastBetResult, setLastBetResult] = useState<BetResult | null>(null);
-  const { addBet } = useBetHistory();
+export const useBetting = ({ userId, userBalance }: UseBettingProps) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBet | null>(null);
 
-  const calculatePotentialWinnings = useCallback((amount: number, odds: number) => {
-    return amount * odds;
-  }, []);
-
-  const validateBet = useCallback((amount: number, userBalance: number) => {
-    if (amount <= 0) {
-      throw new Error('Bet amount must be greater than 0');
-    }
-    if (amount > userBalance) {
-      throw new Error('Insufficient balance');
-    }
-    if (amount > 1000000) {
-      throw new Error('Maximum bet amount is 1,000,000 points');
-    }
-  }, []);
-
-  const placeMemeBet = async (
+  const placeBet = async (
     coin: Coin,
     amount: number,
-    direction: BetDirection,
-    userBalance: number
+    direction: 'up' | 'down'
   ) => {
     try {
-      setIsPlacingBet(true);
-      setLastBetResult(null);
+      setLoading(true);
+      setError(null);
 
-      // Validate bet
-      validateBet(amount, userBalance);
-
-      // Calculate odds based on direction
-      const adjustedOdds = direction === 'up' ? 
-        coin.odds * 1.1 : // 10% better odds for up
-        coin.odds * 0.9;  // 10% worse odds for down
-
-      const betData: BetData = {
-        coinId: coin.id,
+      const placedBet = await betService.placeBet(
+        userId,
+        coin,
         amount,
         direction,
-        odds: adjustedOdds
-      };
+        userBalance
+      );
 
-      // Place bet
-      const response = await placeBet(betData);
-
-      // Add to history
-      await addBet(coin, betData);
-
-      const result: BetResult = {
-        success: true,
-        message: `Successfully placed ${amount} point bet on ${coin.name} going ${direction}!`,
-        betId: response.betId
-      };
-
-      setLastBetResult(result);
-      return result;
-
-    } catch (error) {
-      const errorResult: BetResult = {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to place bet'
-      };
-      setLastBetResult(errorResult);
-      throw error;
+      setLastPlacedBet(placedBet);
+      return placedBet;
+    } catch (err) {
+      const errorMessage = err instanceof GiphyError ? err.message : 'Failed to place bet';
+      setError(errorMessage);
+      throw err;
     } finally {
-      setIsPlacingBet(false);
+      setLoading(false);
     }
   };
 
+  const calculatePotentialWinnings = (
+    coin: Coin,
+    amount: number,
+    direction: 'up' | 'down'
+  ): number => {
+    const odds = betService.calculateOdds(coin, direction);
+    return Number((amount * odds).toFixed(2));
+  };
+
   return {
-    placeMemeBet,
-    isPlacingBet,
-    lastBetResult,
-    calculatePotentialWinnings
+    placeBet,
+    calculatePotentialWinnings,
+    loading,
+    error,
+    lastPlacedBet
   };
 }; 

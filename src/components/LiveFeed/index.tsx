@@ -1,150 +1,180 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { giphyService } from '../../services/giphyService';
-import { GiphyError } from '../../utils/errorHandling';
-import { LoadingSpinner } from '../TrendingMemes/LoadingSpinner';
-import { AlertCircle, Activity } from 'lucide-react';
-import { debugLogger } from '../../utils/debugUtils';
-import { Bet } from '../../types';
-
-// Mock recent bets data
-const generateMockBets = (memeData: any[]): Bet[] => {
-  return memeData.slice(0, 5).map((meme, index) => ({
-    id: `bet-${index}`,
-    userId: `user-${index}`,
-    username: `Trader${index + 1}`,
-    userAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${index}`,
-    coinSymbol: meme.title.slice(0, 4).toUpperCase(),
-    amount: Math.floor(Math.random() * 1000) + 100,
-    prediction: Math.random() > 0.5 ? 'up' : 'down',
-    timestamp: new Date(Date.now() - Math.random() * 3600000)
-  }));
-};
+import React, { useState, useEffect } from 'react';
+import { History } from 'lucide-react';
+import { LiveActivity, generateMockActivity } from '../../data/mockActivity';
+import { BetHistory } from '../BetHistory';
+import { userService } from '../../services/userService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const LiveFeed: React.FC = () => {
+  const [showBetHistory, setShowBetHistory] = useState(false);
+  const [activities, setActivities] = useState<LiveActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [bets, setBets] = useState<Bet[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const userStats = userService.getStats();
 
   useEffect(() => {
-    const fetchAndGenerateBets = async () => {
+    const loadInitialActivities = async () => {
       try {
         setLoading(true);
-        const memes = await giphyService.getTrendingMemes();
-        debugLogger.logGiphyResponse(memes);
-        
-        const mockBets = generateMockBets(memes);
-        setBets(mockBets);
-        setError(null);
-      } catch (err) {
-        const errorMessage = err instanceof GiphyError 
-          ? err.message 
-          : 'Failed to fetch activity feed';
-        
-        debugLogger.logError(err, 'LiveFeed Component');
-        setError(errorMessage);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const initialActivities = Array.from({ length: 5 }, () => generateMockActivity());
+        setActivities(initialActivities);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAndGenerateBets();
+    loadInitialActivities();
 
-    // Simulate new bets coming in
     const interval = setInterval(() => {
-      setBets(prevBets => {
-        const newBet: Bet = {
-          id: `bet-${Date.now()}`,
-          userId: `user-${Math.floor(Math.random() * 100)}`,
-          username: `Trader${Math.floor(Math.random() * 100)}`,
-          userAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`,
-          coinSymbol: ['DOGE', 'PEPE', 'SHIB', 'WOJAK', 'MOON'][Math.floor(Math.random() * 5)],
-          amount: Math.floor(Math.random() * 1000) + 100,
-          prediction: Math.random() > 0.5 ? 'up' : 'down',
-          timestamp: new Date()
-        };
-
-        // Keep only the last 10 bets
-        return [newBet, ...prevBets.slice(0, 9)];
-      });
-    }, 5000); // Add new bet every 5 seconds
+      const newActivity = generateMockActivity();
+      setActivities(prev => [newActivity, ...prev.slice(0, 19)]);
+    }, 3000 + Math.random() * 4000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-scroll to latest bet
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = 0;
-    }
-  }, [bets]);
-
-  if (loading) {
-    return (
-      <div className="h-[450px] bg-white rounded-xl shadow-lg p-4 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="h-[450px] bg-white rounded-xl shadow-lg p-4 flex flex-col items-center justify-center text-red-500">
-        <AlertCircle className="h-8 w-8 mb-2" />
-        <p className="text-center">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-[450px] bg-white rounded-xl shadow-lg flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-purple-600" />
-          <h3 className="font-semibold text-gray-900">Live Activity</h3>
-        </div>
-        <span className="text-sm text-gray-500">
-          {bets.length} recent bets
-        </span>
-      </div>
-
-      {/* Content */}
-      <div 
-        ref={containerRef}
-        className="flex-1 overflow-y-auto overscroll-contain scroll-smooth"
-      >
-        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-          {bets.map((bet) => (
-            <div
-              key={bet.id}
-              className="bg-gray-50 rounded-lg p-3 flex items-center gap-3
-                animate-fadeIn hover:bg-gray-100 transition-colors"
-            >
-              <img
-                src={bet.userAvatar}
-                alt={bet.username}
-                className="w-10 h-10 rounded-full"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {bet.username}
-                </p>
-                <p className="text-xs text-gray-500">
-                  placed a {bet.amount.toLocaleString()} point bet on ${bet.coinSymbol}
-                </p>
-              </div>
-              <div className={`px-2 py-1 rounded text-xs font-medium ${
-                bet.prediction === 'up' 
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {bet.prediction === 'up' ? '▲ Up' : '▼ Down'}
+    <div className="space-y-4">
+      <AnimatePresence mode="wait">
+        {loading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-4 animate-pulse"
+          >
+            {/* Stats Skeleton */}
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <div className="h-6 w-32 bg-gray-200 rounded mb-4" />
+              <div className="grid grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i}>
+                    <div className="h-4 w-20 bg-gray-200 rounded mb-2" />
+                    <div className="h-6 w-16 bg-gray-200 rounded" />
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+
+            {/* Activity Feed Skeleton */}
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <div className="h-6 w-32 bg-gray-200 rounded mb-4" />
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-200" />
+                    <div className="flex-1">
+                      <div className="h-4 w-3/4 bg-gray-200 rounded mb-2" />
+                      <div className="h-3 w-1/4 bg-gray-200 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            {/* Stats Overview */}
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Your Stats</h3>
+                <button
+                  onClick={() => setShowBetHistory(!showBetHistory)}
+                  className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700
+                    transition-colors"
+                >
+                  <History className="w-4 h-4" />
+                  {showBetHistory ? 'Hide History' : 'View History'}
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Balance</p>
+                  <p className="font-semibold text-lg">
+                    {userStats.balance.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Win Rate</p>
+                  <p className="font-semibold text-lg">
+                    {userStats.totalBets > 0
+                      ? ((userStats.winCount / userStats.totalBets) * 100).toFixed(1)
+                      : '0'}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Bets</p>
+                  <p className="font-semibold text-lg">
+                    {userStats.totalBets.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bet History */}
+            {showBetHistory && <BetHistory />}
+
+            {/* Live Activity Feed */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900">Live Activity</h3>
+              </div>
+              <div className="divide-y divide-gray-100 max-h-[450px] overflow-y-auto">
+                {activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="p-4 hover:bg-gray-50 transition-colors animate-fadeIn"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={activity.avatar}
+                        alt={activity.username}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">
+                          <span className="font-medium text-gray-900">
+                            {activity.username}
+                          </span>
+                          {' '}
+                          <span className={activity.action === 'win' 
+                            ? 'text-green-600' 
+                            : activity.action === 'loss' 
+                            ? 'text-red-600' 
+                            : 'text-gray-600'
+                          }>
+                            {activity.action === 'win' 
+                              ? 'won' 
+                              : activity.action === 'loss' 
+                              ? 'lost' 
+                              : 'bet'
+                            }
+                          </span>
+                          {' '}
+                          <span className="font-medium">
+                            {activity.amount.toLocaleString()}
+                          </span>
+                          {' points on '}
+                          <span className="font-medium">
+                            ${activity.coinSymbol}
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(activity.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

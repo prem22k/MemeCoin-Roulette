@@ -1,73 +1,133 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Github, Heart, Twitter, Linkedin } from 'lucide-react';
-import { Container } from './Container';
+import { 
+  Github, 
+  Twitter, 
+  Linkedin, 
+  Code, 
+  Heart,
+  Star,
+  TrendingUp
+} from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface SocialLink {
+  icon: React.FC<{ className?: string }>;
+  label: string;
+  url: string;
+  username: string;
+}
+
+export const Footer = () => {
+  const socialLinks: SocialLink[] = [
+    {
+      icon: Github,
+      label: 'GitHub',
+      url: 'https://github.com/prem22k',
+      username: '@prem22k'
+    },
+    {
+      icon: Twitter,
+      label: 'Twitter',
+      url: 'https://x.com/premsaik22',
+      username: '@premsaik22'
+    },
+    {
+      icon: Linkedin,
+      label: 'LinkedIn',
+      url: 'https://www.linkedin.com/in/premsai22k',
+      username: 'Prem Sai Kota'
+    }
+  ];
+
   return (
-    <footer className="bg-gradient-to-r from-gray-900 to-gray-800 text-gray-300 mt-auto">
-      <Container>
-        <div className="py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            {/* Copyright and Signature */}
-            <div className="flex flex-col items-center md:items-start space-y-2">
-              <div className="flex items-center space-x-2">
-                <span>© {new Date().getFullYear()} MemeCoin Roulette</span>
-                <span>•</span>
-                <span className="flex items-center">
-                  Made with <Heart className="h-4 w-4 text-red-500 mx-1 hover:animate-pulse" /> by{' '}
-                  <a 
-                    href="https://github.com/premsaik" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="ml-1 font-medium text-transparent bg-clip-text bg-gradient-to-r 
-                      from-purple-400 to-blue-400 hover:from-purple-500 hover:to-blue-500 
-                      transition-all"
-                  >
-                    Prem sai k
-                  </a>
-                </span>
+    <footer className="relative mt-16">
+      {/* Gradient Divider */}
+      <div className="h-1 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600" />
+
+      <div className="bg-white">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Brand Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+                <span className="font-bold text-xl">MemeCoin Roulette</span>
               </div>
-              <p className="text-sm text-gray-400">
-                Building the future of meme prediction markets
+              <p className="text-gray-600">
+                Predict the next viral meme trend and compete with other traders
+                in this exciting prediction game.
               </p>
             </div>
 
-            {/* Social Links */}
-            <div className="flex items-center space-x-6">
-              {[
-                { icon: Github, label: 'GitHub', url: 'https://github.com/premsaik' },
-                { icon: Twitter, label: 'Twitter', url: 'https://twitter.com/premsaik' },
-                { icon: Linkedin, label: 'LinkedIn', url: 'https://linkedin.com/in/premsaik' }
-              ].map(({ icon: Icon, label, url }) => (
-                <a
-                  key={label}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-colors flex items-center space-x-2 group"
-                >
-                  <Icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span className="hidden sm:block">{label}</span>
+            {/* Quick Links */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Quick Links</h3>
+              <div className="space-y-2">
+                <a href="/trending" className="block text-gray-600 hover:text-purple-600">
+                  Trending Memes
                 </a>
-              ))}
+                <a href="/leaderboard" className="block text-gray-600 hover:text-purple-600">
+                  Leaderboard
+                </a>
+                <a href="/about" className="block text-gray-600 hover:text-purple-600">
+                  About
+                </a>
+              </div>
             </div>
 
-            {/* Quick Links */}
-            <div className="flex items-center space-x-6">
-              {['About', 'Terms', 'Privacy'].map((link) => (
-                <Link
-                  key={link}
-                  to={`/${link.toLowerCase()}`}
-                  className="hover:text-white transition-colors text-sm"
+            {/* Social Links */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Connect</h3>
+              <div className="flex flex-wrap gap-4">
+                {socialLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-gray-600 hover:text-purple-600
+                      transition-colors"
+                  >
+                    <link.icon className="h-5 w-5" />
+                    <span>{link.label}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="mt-12 pt-8 border-t border-gray-100">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-2 text-gray-600">
+                <span>Built with</span>
+                <Heart className="h-4 w-4 text-red-500 animate-pulse" />
+                <span>by</span>
+                <a
+                  href="https://github.com/prem22k"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-purple-600 hover:text-purple-700"
                 >
-                  {link}
-                </Link>
-              ))}
+                  Prem Sai Kota
+                </a>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://github.com/prem22k/memecoin-roulette"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-gray-600 hover:text-purple-600
+                    transition-colors"
+                >
+                  <Code className="h-4 w-4" />
+                  <span>Source Code</span>
+                </a>
+                <Star className="h-4 w-4 text-yellow-400" />
+              </div>
             </div>
           </div>
         </div>
-      </Container>
+      </div>
     </footer>
   );
 };

@@ -1,84 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Coins, X } from 'lucide-react';
-import { Coin, BetData } from '../../types';
+import React, { useState } from 'react';
+import { TrendingUp, TrendingDown, Coins, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Coin } from '../../types';
+import { betService, BetData } from '../../services/betService';
+import { GiphyError } from '../../utils/errorHandling';
 import { buttonStyles } from '../../styles/buttons';
-import { useBetting } from '../../hooks/useBetting';
-import confetti from 'canvas-confetti';
 
 interface BetModalProps {
   isOpen: boolean;
   onClose: () => void;
   coin: Coin;
-  userBalance?: number;
-  onPlaceBet?: (betData: BetData) => Promise<void>;
+  userBalance: number;
+  userId?: string;
+  onBetPlaced?: (bet: BetData) => void;
 }
 
 export const BetModal: React.FC<BetModalProps> = ({
   isOpen,
   onClose,
   coin,
-  userBalance = 10000,
-  onPlaceBet
+  userBalance,
+  userId = 'anonymous',
+  onBetPlaced
 }) => {
   const [amount, setAmount] = useState<string>('100');
   const [direction, setDirection] = useState<'up' | 'down' | null>(null);
-  const { placeMemeBet, isPlacingBet, lastBetResult, calculatePotentialWinnings } = useBetting();
-
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setAmount('100');
-      setDirection(null);
-    }
-  }, [isOpen]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!direction) {
+    if (!direction || !amount) {
+      setError('Please select a direction and enter an amount');
       return;
     }
 
     try {
-      if (onPlaceBet) {
-        await onPlaceBet({
-          coinId: coin.id,
-          amount: Number(amount),
-          direction,
-          odds: direction === 'up' ? coin.odds * 1.1 : coin.odds * 0.9
-        });
-      } else {
-        const result = await placeMemeBet(coin, Number(amount), direction, userBalance);
-        
-        if (result.success) {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-          setTimeout(onClose, 2000);
-        }
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      // Validate amount
+      const betAmount = Number(amount);
+      if (isNaN(betAmount) || betAmount <= 0) {
+        throw new GiphyError('Please enter a valid bet amount', 'VALIDATION_ERROR');
       }
-    } catch (error) {
-      console.error('Bet placement failed:', error);
+
+      if (betAmount > userBalance) {
+        throw new GiphyError('Insufficient balance for this bet', 'VALIDATION_ERROR');
+      }
+
+      // Create bet data
+      const betData: BetData = {
+        userId,
+        memeId: coin.id,
+        amount: betAmount,
+        direction,
+        odds: betService.calculateOdds(coin, direction),
+        timestamp: new Date()
+      };
+
+      await betService.placeBet(
+        userId,
+        coin,
+        betAmount,
+        direction,
+        userBalance
+      );
+
+      // Show success message
+      const successMessage = `Successfully placed ${betAmount.toLocaleString()} point bet on ${coin.name} going ${direction}!`;
+      setSuccess(successMessage);
+      onBetPlaced?.(betData);
+
+      // Close modal after delay
+      setTimeout(() => {
+        onClose();
+        setSuccess(null);
+      }, 2000);
+
+    } catch (err) {
+      let errorMessage = 'Failed to place bet';
+      
+      if (err instanceof GiphyError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      console.error('Bet placement error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const potentialWinnings = calculatePotentialWinnings(
-    Number(amount) || 0,
-    direction === 'up' ? coin.odds * 1.1 : coin.odds * 0.9
-  );
-
   if (!isOpen) return null;
 
+  const potentialWinnings = direction && amount
+    ? Number(amount) * betService.calculateOdds(coin, direction)
+    : 0;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4
-      animate-fadeIn backdrop-blur-sm"
-    >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden
-        scale-in"
-      >
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white relative">
           <button
             onClick={onClose}
             className="absolute right-4 top-4 text-white/80 hover:text-white"
@@ -93,18 +120,20 @@ export const BetModal: React.FC<BetModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Direction Selection */}
-          <div className="grid grid-cols-2 gap-4 stagger-children">
+          <div className="grid grid-cols-2 gap-4">
             {['up', 'down'].map((dir) => (
               <button
                 key={dir}
                 type="button"
-                onClick={() => setDirection(dir as 'up' | 'down')}
+                onClick={() => {
+                  setDirection(dir as 'up' | 'down');
+                  setError(null); // Clear error on selection
+                }}
                 className={`p-4 border-2 rounded-lg flex flex-col items-center gap-2
-                  transform transition-all duration-300 hover:scale-105
                   ${direction === dir 
                     ? dir === 'up'
-                      ? 'border-green-500 bg-green-50 text-green-700 pulse-glow'
-                      : 'border-red-500 bg-red-50 text-red-700 pulse-glow'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-red-500 bg-red-50 text-red-700'
                     : 'border-gray-200 hover:bg-gray-50'
                   }`}
               >
@@ -115,9 +144,6 @@ export const BetModal: React.FC<BetModalProps> = ({
                 )}
                 <span className="font-medium">
                   {dir === 'up' ? 'Going Up' : 'Going Down'}
-                </span>
-                <span className="text-sm opacity-75">
-                  {(dir === 'up' ? coin.odds * 1.1 : coin.odds * 0.9).toFixed(2)}x
                 </span>
               </button>
             ))}
@@ -132,10 +158,14 @@ export const BetModal: React.FC<BetModalProps> = ({
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError(null); // Clear error on input
+                }}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
                 min="1"
                 max={userBalance}
+                placeholder="Enter amount"
               />
               <span className="absolute right-4 top-2 text-gray-500">
                 points
@@ -144,34 +174,40 @@ export const BetModal: React.FC<BetModalProps> = ({
           </div>
 
           {/* Potential Winnings */}
-          <div className="bg-purple-50 rounded-lg p-4">
-            <p className="text-sm text-purple-600">Potential Winnings</p>
-            <p className="text-2xl font-bold text-purple-700">
-              {potentialWinnings.toLocaleString()} points
-            </p>
-          </div>
-
-          {/* Error/Success Messages */}
-          {lastBetResult && (
-            <div className={`p-4 rounded-lg slide-in-right ${
-              lastBetResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-            }`}>
-              <p className="flex items-center gap-2">
-                {lastBetResult.success ? '🎉' : '⚠️'} {lastBetResult.message}
+          {direction && amount && (
+            <div className="bg-purple-50 rounded-lg p-4">
+              <p className="text-sm text-purple-600">Potential Winnings</p>
+              <p className="text-2xl font-bold text-purple-700">
+                {potentialWinnings.toLocaleString()} points
               </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 rounded-lg flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="p-4 bg-green-50 rounded-lg flex items-center gap-2 text-green-700">
+              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+              <p>{success}</p>
             </div>
           )}
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={!direction || isPlacingBet || !amount}
-            className={`${buttonStyles.primary} w-full transform transition-all duration-300
-              hover:scale-[1.02] active:scale-[0.98] ${
-              isPlacingBet ? 'opacity-50 cursor-not-allowed' : ''
+            disabled={!direction || loading || !amount}
+            className={`${buttonStyles.primary} w-full ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {isPlacingBet ? (
+            {loading ? (
               <span className="flex items-center justify-center">
                 <Coins className="animate-spin h-5 w-5 mr-2" />
                 Placing Bet...

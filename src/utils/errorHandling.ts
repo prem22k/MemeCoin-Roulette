@@ -44,10 +44,18 @@ export const isNetworkError = (error: unknown): boolean => {
     );
 };
 
+export type ErrorCode = 
+  | 'NETWORK_ERROR'
+  | 'RATE_LIMIT'
+  | 'API_ERROR'
+  | 'INVALID_API_KEY'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR';
+
 export class GiphyError extends Error {
   constructor(
     message: string,
-    public readonly code: 'NETWORK_ERROR' | 'RATE_LIMIT' | 'API_ERROR' | 'INVALID_API_KEY' | 'UNKNOWN_ERROR',
+    public readonly code: ErrorCode,
     public readonly status?: number
   ) {
     super(message);
