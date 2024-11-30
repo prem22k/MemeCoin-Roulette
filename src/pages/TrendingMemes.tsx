@@ -4,6 +4,7 @@ import { TrendingMemes as TrendingMemesComponent } from '../components/TrendingM
 import { BetModal } from '../components/Trends/BetModal';
 import { Coin } from '../types';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import giphyLogo from '../assets/giphy/PoweredBy_200px-White_HorizText.png';
 
 export const TrendingMemes: React.FC = () => {
   const [selectedMeme, setSelectedMeme] = useState<Coin | null>(null);
@@ -33,7 +34,7 @@ export const TrendingMemes: React.FC = () => {
           {/* GIPHY Attribution - positioned on the right */}
           <div className="absolute right-0 bottom-0 -mb-6">
             <img 
-              src="/dist/giphy/PoweredBy_200px-White_HorizText.png"
+              src={giphyLogo}
               alt="Powered by GIPHY"
               className="h-5 object-contain"
             />
